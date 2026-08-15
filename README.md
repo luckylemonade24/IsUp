@@ -1,6 +1,6 @@
 # IsUp
 服务状态监控
-打开index.html搜索ILOVEYOUYOULOVEME替换为uptimerobot状态页面ID(看创建状态页面的链接"https://stats.uptimerobot.com/这里是状态ID")
+打开index.html搜索https://stats.uptimerobot.com/api/getMonitorList/和https://stats.uptimerobot.com/api/getMonitor/把后面id替换为uptimerobot状态页面ID(看创建状态页面的链接"https://stats.uptimerobot.com/这里是状态ID")
 再本地打开index.html按F12打开开发人员工具，切换至控制台输入
 ```
 (async function() {
