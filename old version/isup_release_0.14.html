@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>IsUp</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='50' fill='%233BD771' opacity='0.3'/%3E%3Ccircle cx='50' cy='50' r='25' fill='%233BD771'/%3E%3C/svg%3E" type="image/svg+xml">
+  <link rel="preconnect" href="https://stats.uptimerobot.com">
+  <style>
+    :root {
+      color-scheme: light dark;
+      --g: #3BD671; --lg: #9DEAB8; --o: #F29030; --r: #DF484A; --gy: #94a3b8;
+      --bg: light-dark(#e8ecf0, #121212);
+      --card: light-dark(#f5f7fa, #1e1e1e);
+      --text: light-dark(#1e293b, #e2e8f0);
+      --muted: light-dark(#6b7280, #aaa);
+      --border: light-dark(#dce0e6, #3d3d3d);
+      --shadow-color: light-dark(rgba(0,0,0,0.08), rgba(0,0,0,0.6));
+      --shadow: 0 .375rem 1rem var(--shadow-color);
+      --row: 4rem; --ch: 7.5rem; --pad: 2.5rem;
+      --m-uptime-mr: 1.25rem; --bars-mr: 1.25rem; --bar-h: 1rem;
+      --f: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      --compact-scale: .85;
+    }
+    html.compact-mode { font-size: calc(16px * var(--compact-scale)); }
+    * { margin:0; padding:0; box-sizing:border-box; }
+    html, body { height:100%; scrollbar-width:none; -ms-overflow-style:none; }
+    html::-webkit-scrollbar, body::-webkit-scrollbar { display:none; }
+    body { font:400 1rem/1.5 var(--f); background:var(--bg); color:var(--text); display:flex; justify-content:center; align-items:flex-start; min-height:100vh; transition:background .3s,color .3s; }
+    .container { max-width:68.75rem; width:100%; min-height:100vh; display:flex; flex-direction:column; padding:var(--ch) var(--pad) 0; position:relative; }
+    .header { position:absolute; top:0; left:0; right:0; height:var(--ch); display:flex; justify-content:space-between; align-items:center; padding:0 var(--pad); pointer-events:none; z-index:2; background:var(--bg); transition:background .3s; }
+    .header > * { pointer-events:auto; }
+    .header-left h1 { font-size:2.2rem; font-weight:700; color:var(--text); letter-spacing:-.03125rem; }
+    .header-left h1 .text-green { color:var(--g); }
+    .header-right { text-align:right; display:flex; flex-direction:column; align-items:flex-end; gap:.2rem; }
+    .theme-toggle { display:inline-flex; align-items:center; cursor:pointer; color:var(--text); user-select:none; }
+    .theme-toggle input { position:absolute; opacity:0; pointer-events:none; }
+    .theme-toggle svg { width:1.375rem; height:1.375rem; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
+    .theme-toggle .sun { display:block; }
+    .theme-toggle .moon { display:none; }
+    :root[data-theme="light"] .theme-toggle .sun { display:block; }
+    :root[data-theme="light"] .theme-toggle .moon { display:none; }
+    :root[data-theme="dark"] .theme-toggle .sun { display:none; }
+    :root[data-theme="dark"] .theme-toggle .moon { display:block; }
+    @media (prefers-color-scheme: light) { :root:not([data-theme]) .theme-toggle .sun { display:block; } :root:not([data-theme]) .theme-toggle .moon { display:none; } }
+    @media (prefers-color-scheme: dark) { :root:not([data-theme]) .theme-toggle .sun { display:none; } :root:not([data-theme]) .theme-toggle .moon { display:block; } }
+    .overall-card, .monitor-card { background:var(--card); border-radius:.5rem; box-shadow:var(--shadow); transition:background .3s,box-shadow .3s; }
+    .overall-card { margin-bottom:2.75rem; height:var(--ch); display:flex; align-items:center; padding:0 2.75rem; }
+    .overall-status { display:flex; align-items:center; gap:2.75rem; font-size:2.2rem; font-weight:700; color:var(--text); }
+    .dot { position:relative; flex-shrink:0; }
+    .dot .core, .dot .ring { border-radius:50%; position:absolute; background:var(--g); transition:background .3s; }
+    .dot .ring { animation:pulse var(--pulse-duration,2s) ease-out infinite; z-index:1; transform-origin:center; }
+    .dot.gray .ring { animation:none; opacity:0; }
+    .dot.gray .core { background:var(--gy); }
+    .dot.status-green .core, .dot.status-green .ring { background:#3BD671; }
+    .dot.status-orange .core, .dot.status-orange .ring { background:#F29030; }
+    .dot.status-red .core, .dot.status-red .ring { background:#DF484A; }
+    .dot.status-gray .core, .dot.status-gray .ring { background:#94a3b8; }
+    @keyframes pulse { 0% { transform:scale(1); opacity:var(--pulse-start,.8); } 100% { transform:scale(2); opacity:0; } }
+    .dot-lg { width:2rem; height:2rem; transform:translateY(.125rem); }
+    .dot-lg .core, .dot-lg .ring { width:1.5rem; height:1.5rem; top:.25rem; left:.25rem; --pulse-start:.8; --pulse-duration:2s; }
+    .dot-sm { width:1rem; height:1rem; }
+    .dot-sm .core, .dot-sm .ring { width:.75rem; height:.75rem; top:.125rem; left:.125rem; --pulse-start:.6; --pulse-duration:1.8s; }
+    .services-title { font-size:2.2rem; font-weight:700; color:var(--text); margin-bottom:.75rem; padding-left:.125rem; }
+    .monitor-row { display:flex; align-items:center; padding:0 1.25rem; position:relative; min-height:var(--row); transition:background .2s; content-visibility:auto; contain-intrinsic-size:auto 4rem; contain:layout style; flex-wrap:nowrap; }
+    .monitor-row::after { content:''; position:absolute; left:1.25rem; right:1.25rem; bottom:0; height:.0625rem; background:var(--border); }
+    .monitor-row:last-child::after { display:none; }
+    .monitor-row:hover { background:var(--bg); }
+    .monitor-row .m-name { font-size:1.05rem; color:var(--text); flex:1; min-width:15rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .monitor-row .m-uptime { font-size:1.05rem; flex:0 0 5rem; text-align:right; margin-right:var(--m-uptime-mr); }
+    .monitor-row .m-uptime.excellent, .monitor-row .m-uptime.good { color:var(--g); }
+    .monitor-row .m-uptime.fair { color:var(--o); }
+    .monitor-row .m-uptime.poor { color:var(--r); }
+    .monitor-row .daily-bars { flex:0 0 auto; display:flex; align-items:center; gap:.125rem; margin-right:var(--bars-mr); contain:layout style; }
+    .monitor-row .daily-bar { flex:0 0 .1875rem; height:var(--bar-h); border-radius:.5rem; background:#e2e8f0; transition:transform .1s; cursor:default; }
+    .monitor-row .daily-bar:hover { transform:scaleY(1.2); }
+    .monitor-row .daily-bar.excellent { background:var(--g); }
+    .monitor-row .daily-bar.good { background:var(--lg); }
+    .monitor-row .daily-bar.fair { background:var(--o); }
+    .monitor-row .daily-bar.poor { background:var(--r); }
+    .monitor-row .m-status { flex:0 0 5rem; display:flex; align-items:center; gap:.375rem; font-size:1.05rem; }
+    .monitor-row .m-status .txt.Up { color:var(--g); }
+    .monitor-row .m-status .txt.Down { color:var(--r); }
+    .monitor-row .m-status .txt.Paused, .monitor-row .m-status .txt.None { color:var(--gy); }
+    .compact-mode .monitor-row { flex-wrap:wrap; min-height:4.5rem; padding:.3rem 1.25rem; }
+    .compact-mode .monitor-row .m-name { flex:1 0 auto; font-size:1.05rem; min-width:8rem; }
+    .compact-mode .monitor-row .m-uptime { flex:0 0 auto; font-size:1.05rem; margin-right:.5rem; }
+    .compact-mode .monitor-row .m-status { flex:0 0 auto; font-size:1.05rem; }
+    .compact-mode .monitor-row .daily-bars { flex:1 1 100%; order:2; margin-top:.2rem; margin-right:0; width:100%; display:grid; }
+    .compact-mode .monitor-row .daily-bar { height:auto; aspect-ratio:3/7; border-radius:.3rem; min-width:2px; }
+    .loading-placeholder, .error-placeholder, .retry-placeholder { padding:3.75rem 1.25rem; text-align:center; color:#94a3b8; font-size:.95rem; }
+    .error-placeholder { color:#dc2626; }
+    .footer { margin-top:auto; padding:1.5rem 0 1.25rem; font-size:.95rem; display:flex; justify-content:space-between; align-items:center; color:var(--muted); }
+    .footer .footer-left, .footer .footer-right { display:flex; align-items:center; gap:.25rem; }
+    .footer a { color:var(--muted); text-decoration:none; transition:color .2s; }
+    .footer a:hover { color:var(--text); }
+    .footer .dot-green { display:inline-block; width:.5rem; height:.5rem; background:var(--g); border-radius:50%; margin:0 .125rem; vertical-align:middle; }
+    .footer .uptime-robot { font-weight:700; color:var(--text); font-size:1.3rem; }
+    .footer .uptime-robot a { color:var(--text); }
+    .footer .uptime-robot a:hover { text-decoration:underline; }
+    .text-green { color:#3BD671; }
+    .text-orange { color:#F29030; }
+    .text-red { color:#DF484A; }
+    .text-gray { color:#94a3b8; }
+  </style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <div class="header-left"><h1>Is<span class="text-green">Up</span></h1></div>
+    <div class="header-right">
+      <label class="theme-toggle" aria-label="切换明暗模式">
+        <input type="checkbox" id="themeToggle">
+        <svg class="sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M19.1 4.9l-1.4 1.4M6.3 17.7l-1.4 1.4"/></svg>
+        <svg class="moon" viewBox="0 0 24 24"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+      </label>
+    </div>
+  </div>
+  <div class="overall-card">
+    <div class="overall-status">
+      <div class="dot dot-lg" id="overallDot"><div class="core"></div><div class="ring"></div></div>
+      <span id="overallText">All systems <span class="text-green">Operational</span></span>
+    </div>
+  </div>
+  <div class="services-title">Services</div>
+  <div class="monitor-card" id="monitorCard"><div class="loading-placeholder">⏳ Loading monitor data...</div></div>
+  <div class="footer">
+    <div class="footer-left"><a href="https://github.com/" target="_blank" rel="noopener noreferrer">v0.12</a></div>
+    <div class="footer-right">
+      <span>Data from</span>
+      <span class="dot-green"></span>
+      <span class="uptime-robot"><a href="https://uptimerobot.com/" target="_blank" rel="noopener noreferrer">UptimeRobot</a></span>
+    </div>
+  </div>
+</div>
+<script>
+(() => {
+  const root = document.documentElement,
+        matchDark = window.matchMedia('(prefers-color-scheme: dark)'),
+        get = id => document.getElementById(id),
+        themeToggle = get('themeToggle'),
+        monitorCard = get('monitorCard'),
+        overallDot = get('overallDot'),
+        overallText = get('overallText');
+
+  const STATUS = { success:'Up', danger:'Down', notchecked:'None', paused:'Paused' },
+        COLORS = { green:'#3BD671', orange:'#F29030', red:'#DF484A' },
+        TEXT_CLASS = { '#3BD671':'text-green', '#F29030':'text-orange', '#DF484A':'text-red', '#94a3b8':'text-gray' },
+        DOT_CLASS = { '#3BD671':'status-green', '#F29030':'status-orange', '#DF484A':'status-red', '#94a3b8':'status-gray' };
+
+  const getTheme = () => root.getAttribute('data-theme') || (matchDark.matches ? 'dark' : 'light');
+  const setTheme = t => {
+    if (t === 'system') { root.removeAttribute('data-theme'); root.style.colorScheme = ''; }
+    else { root.setAttribute('data-theme', t); root.style.colorScheme = t; }
+    themeToggle.checked = getTheme() !== (matchDark.matches ? 'dark' : 'light');
+  };
+  const toggleTheme = () => {
+    const cur = getTheme(), sys = matchDark.matches ? 'dark' : 'light';
+    setTheme(cur === sys ? (sys === 'dark' ? 'light' : 'dark') : 'system');
+  };
+  setTheme('system');
+  themeToggle.addEventListener('change', function(e) {
+    if (this._toggling) return;
+    this._toggling = true;
+    toggleTheme();
+    this._toggling = false;
+  });
+  matchDark.addEventListener('change', () => { if (!root.getAttribute('data-theme')) setTheme('system'); });
+
+  const cls = l => ({ excellent:'excellent', good:'good', fair:'fair', poor:'poor' }[l] || '');
+  const status = s => STATUS[s] || 'Paused';
+  const fmt = v => (v == null || v === '') ? '—%' : (v.includes('%') ? v : v + '%');
+  const getUptime = item => {
+    const r = item['90dRatio'] || {};
+    return { ratio: r.ratio != null ? fmt(r.ratio) : '—%', label: r.label || 'good' };
+  };
+
+  const updateOverall = counts => {
+    const { total=0, up=0, down=0, paused=0 } = counts;
+    let statusText, color = COLORS.green, isGray = false;
+    if (down === 0 && paused === 0) { statusText = 'All systems Operational'; color = COLORS.green; }
+    else if (down > 0 && down < total) { statusText = 'Some systems down'; color = COLORS.orange; }
+    else if (down === total) { statusText = 'All systems down'; color = COLORS.red; }
+    else if (paused > 0) { statusText = 'Some systems paused'; color = '#94a3b8'; isGray = true; }
+    else { statusText = 'Unknown status'; color = '#94a3b8'; isGray = true; }
+    const lastSpace = statusText.lastIndexOf(' ');
+    const prefix = lastSpace === -1 ? '' : statusText.slice(0, lastSpace + 1);
+    const lastWord = lastSpace === -1 ? statusText : statusText.slice(lastSpace + 1);
+    overallText.innerHTML = prefix + `<span class="${TEXT_CLASS[color] || 'text-green'}">${lastWord}</span>`;
+    overallDot.className = `dot dot-lg ${DOT_CLASS[color] || 'status-green'}${isGray ? ' gray' : ''}`;
+  };
+
+  const showPlaceholder = (type, msg) => {
+    monitorCard.textContent = '';
+    const el = document.createElement('div');
+    el.className = type === 'error' ? 'error-placeholder' : type === 'retry' ? 'retry-placeholder' : 'loading-placeholder';
+    el.textContent = msg;
+    monitorCard.appendChild(el);
+  };
+
+  const render = data => {
+    const monitors = data.data || [];
+    if (data.statistics?.counts) updateOverall(data.statistics.counts);
+    else if (data.psp?.monitors) {
+      const items = data.psp.monitors;
+      const up = items.filter(m => m.statusClass === 'success').length;
+      const down = items.filter(m => m.statusClass === 'danger').length;
+      const paused = items.filter(m => m.statusClass === 'paused' || m.statusClass === 'notchecked').length;
+      updateOverall({ up, down, paused, total: items.length });
+    }
+    if (!monitors.length) { showPlaceholder('info', 'No monitors found'); return; }
+
+    const cardWidth = monitorCard.clientWidth;
+    const rootFontSize = parseFloat(getComputedStyle(root).fontSize);
+    const fixed = (5 + 5 + 2*1.25 + 1.25 + 1.25 + 15) * rootFontSize;
+    const avail = cardWidth - fixed;
+    const unit = (0.1875 + 0.125) * rootFontSize;
+    let maxBars = Math.min(90, Math.max(30, Math.floor(avail / unit)));
+    const isCompact = maxBars < 40;
+    root.classList.toggle('compact-mode', isCompact);
+
+    let gapPx = 0;
+    if (isCompact) {
+      const gridWidth = cardWidth - 2 * 1.25 * rootFontSize;
+      gapPx = gridWidth / (2.5 * maxBars - 1);
+    }
+
+    let html = '';
+    for (const item of monitors) {
+      const name = item.name || 'Unnamed';
+      const dotClass = status(item.statusClass || 'unknown');
+      const isGray = dotClass === 'Paused' || dotClass === 'None';
+      const uptime = getUptime(item);
+      const daily = Array.isArray(item.dailyRatios) ? item.dailyRatios : [];
+      const recent = daily.slice(-maxBars);
+      let barsHtml = '';
+      for (const day of recent) {
+        const bc = cls(day.label);
+        const ratio = day.ratio != null ? fmt(day.ratio) : '?%';
+        barsHtml += `<div class="daily-bar ${bc}" title="${day.date || 'unknown'}: ${ratio}"></div>`;
+      }
+      html += `<div class="monitor-row">
+        <span class="m-name" title="${name}">${name}</span>
+        <span class="m-uptime ${cls(uptime.label)}">${uptime.ratio}</span>
+        <div class="daily-bars">${barsHtml}</div>
+        <div class="m-status">
+          <div class="dot dot-sm ${isGray?'gray':''}"><div class="core ${dotClass}"></div><div class="ring ${dotClass}"></div></div>
+          <span class="txt ${dotClass}">${dotClass}</span>
+        </div>
+      </div>`;
+    }
+    const fragment = document.createRange().createContextualFragment(html);
+    if (isCompact) {
+      const bars = fragment.querySelectorAll('.daily-bars');
+      for (const bar of bars) {
+        bar.style.display = 'grid';
+        bar.style.gridTemplateColumns = `repeat(${maxBars}, 1fr)`;
+        bar.style.gap = `${gapPx}px`;
+      }
+    }
+    monitorCard.replaceChildren(fragment);
+  };
+
+  const API = 'https://stats.uptimerobot.com/api/getMonitorList/WHYtyVV51p';
+  let isLoading = false;
+  const MAX_RETRIES = 3;
+
+  const loadData = async (attempt = 0) => {
+    if (isLoading) return;
+    isLoading = true;
+    showPlaceholder(attempt === 0 ? 'loading' : 'retry', attempt === 0 ? '⏳ Loading...' : `⏳ Loading (retry ${attempt}/${MAX_RETRIES})...`);
+    try {
+      const resp = await fetch(API);
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      const json = await resp.json();
+      if (json.status === 'ok' && Array.isArray(json.data)) { render(json); isLoading = false; return; }
+      throw new Error('Invalid data format');
+    } catch (err) {
+      if (attempt < MAX_RETRIES) setTimeout(() => loadData(attempt + 1), 2000 * (attempt + 1));
+      else { showPlaceholder('error', `❌ Failed to load: ${err.message}`); isLoading = false; }
+    }
+  };
+  loadData(0);
+})();
+</script>
+</body>
+</html>

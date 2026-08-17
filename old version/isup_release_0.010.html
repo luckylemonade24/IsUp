@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Status Page</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='50' fill='%233BD771' opacity='0.3'/%3E%3Ccircle cx='50' cy='50' r='25' fill='%233BD771'/%3E%3C/svg%3E" type="image/svg+xml">
+  <link rel="preconnect" href="https://stats.uptimerobot.com">
+  <style>
+    @property --cd { syntax: "<integer>"; inherits: false; initial-value: 300; }
+    :root {
+      color-scheme: light dark;
+      --g: #3BD671; --lg: #9DEAB8; --o: #F29030; --r: #DF484A; --gy: #94a3b8;
+      --bg: light-dark(#e8ecf0, #121212);
+      --card: light-dark(#f5f7fa, #1e1e1e);
+      --text: light-dark(#1e293b, #e2e8f0);
+      --muted: light-dark(#6b7280, #aaa);
+      --border: light-dark(#dce0e6, #3d3d3d);
+      --shadow-color: light-dark(rgba(0,0,0,0.08), rgba(0,0,0,0.6));
+      --shadow: 0 0.375rem 1rem var(--shadow-color);
+      --row: 4rem;
+      --ch: 7.5rem;
+      --pad: 2.5rem;
+      --m-uptime-mr: 1.25rem;
+      --bars-mr: 1.25rem;
+      --bar-h: 1rem;
+      --f: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    }
+    * { margin:0; padding:0; box-sizing:border-box; }
+    html, body { height:100%; scrollbar-width:none; -ms-overflow-style:none; }
+    html::-webkit-scrollbar, body::-webkit-scrollbar { display:none; }
+    body { font-family:var(--f); background:var(--bg); color:var(--text); display:flex; justify-content:center; align-items:flex-start; min-height:100vh; padding:0; transition:background .3s,color .3s; }
+    .container { max-width:68.75rem; width:100%; min-height:100vh; display:flex; flex-direction:column; padding:var(--ch) var(--pad) 0; position:relative; }
+    .header { position:absolute; top:0; left:0; right:0; height:var(--ch); display:flex; justify-content:space-between; align-items:center; padding:0 var(--pad); pointer-events:none; z-index:2; background:var(--bg); transition:background .3s,color .3s; }
+    .header > * { pointer-events:auto; }
+    .header-left h1 { font-size:2.2rem; font-weight:700; color:var(--text); letter-spacing:-0.03125rem; transition:color .3s; }
+    .header-right { text-align:right; display:flex; flex-direction:column; align-items:flex-end; justify-content:center; gap:0.2rem; }
+    .header-right .service-status { font-size:1.3rem; font-weight:700; color:var(--text); display:inline-flex; align-items:center; gap:0.5rem; line-height:1.4; transition:color .3s; }
+    .header-right .update-info { font-size:0.95rem; color:var(--muted); display:inline-flex; align-items:center; gap:0.3rem; flex-wrap:wrap; justify-content:flex-end; line-height:1.4; }
+    .header-right .update-info span { font-weight:500; color:var(--muted); }
+    .theme-toggle { display:inline-flex; align-items:center; cursor:pointer; color:var(--text); line-height:1; user-select:none; transition:color .3s; }
+    .theme-toggle input[type="checkbox"] { position:absolute; opacity:0; pointer-events:none; }
+    .theme-toggle svg { width:1.375rem; height:1.375rem; stroke:currentColor; fill:none; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
+    .theme-toggle .sun { display:block; }
+    .theme-toggle .moon { display:none; }
+    :root[data-theme="light"] .theme-toggle .sun { display:block; }
+    :root[data-theme="light"] .theme-toggle .moon { display:none; }
+    :root[data-theme="dark"] .theme-toggle .sun { display:none; }
+    :root[data-theme="dark"] .theme-toggle .moon { display:block; }
+    @media (prefers-color-scheme: light) { :root:not([data-theme]) .theme-toggle .sun { display:block; } :root:not([data-theme]) .theme-toggle .moon { display:none; } }
+    @media (prefers-color-scheme: dark) { :root:not([data-theme]) .theme-toggle .sun { display:none; } :root:not([data-theme]) .theme-toggle .moon { display:block; } }
+    .cd-wrap { display:inline-flex; align-items:center; gap:0.1rem; }
+    .cd-wrap .lbl { order:1; }
+    .cd-wrap .num { order:2; }
+    .cd-wrap .unit { order:3; }
+    .cd-wrap .num { display:inline-block; min-width:1.8rem; text-align:center; font-weight:500; counter-reset:n calc(0 + var(--cd)); animation:cd 300s linear forwards; animation-play-state:paused; }
+    .cd-wrap .num::before { content:counter(n); }
+    .cd-wrap .num.running { animation-play-state:running; }
+    @keyframes cd { from { --cd:300; } to { --cd:0; } }
+    .overall-card, .monitor-card { background:var(--card); border-radius:0.5rem; box-shadow:var(--shadow); overflow:hidden; transition:background .3s,box-shadow .3s; }
+    .overall-card { margin-bottom:2.75rem; height:var(--ch); min-height:var(--ch); display:flex; align-items:center; padding:0 2.75rem; }
+    .overall-status { display:flex; align-items:center; gap:2.75rem; font-size:2.2rem; font-weight:700; color:var(--text); transition:color .3s; }
+    .dot { position:relative; flex-shrink:0; }
+    .dot .core { border-radius:50%; position:absolute; z-index:2; background:var(--g); transition:background .3s; }
+    .dot .ring { border-radius:50%; position:absolute; background:var(--g); animation:pulse var(--pulse-duration, 2s) ease-out infinite; z-index:1; transform-origin:center; transition:background .3s,opacity .3s; }
+    .dot.gray .ring { animation:none; opacity:0; }
+    .dot.gray .core { background:var(--gy); }
+    @keyframes pulse {
+      0% { transform: scale(1); opacity: var(--pulse-start, 0.8); }
+      100% { transform: scale(2); opacity: 0; }
+    }
+    .dot-lg { width:2rem; height:2rem; transform:translateY(0.125rem); }
+    .dot-lg .core { width:1.5rem; height:1.5rem; top:0.25rem; left:0.25rem; }
+    .dot-lg .ring { width:1.5rem; height:1.5rem; top:0.25rem; left:0.25rem; --pulse-start: 0.8; --pulse-duration: 2s; }
+    .dot-sm { width:1rem; height:1rem; }
+    .dot-sm .core { width:0.75rem; height:0.75rem; top:0.125rem; left:0.125rem; }
+    .dot-sm .ring { width:0.75rem; height:0.75rem; top:0.125rem; left:0.125rem; --pulse-start: 0.6; --pulse-duration: 1.8s; }
+    .services-title { font-size:2.2rem; font-weight:700; color:var(--text); margin-bottom:0.75rem; padding-left:0.125rem; transition:color .3s; }
+    .monitor-row { display:flex; align-items:center; padding:0 1.25rem; position:relative; height:var(--row); transition:background .2s; content-visibility:auto; contain-intrinsic-size:auto 4rem; contain:layout style; }
+    .monitor-row::after { content:''; position:absolute; left:1.25rem; right:1.25rem; bottom:0; height:0.0625rem; background:var(--border); }
+    .monitor-row:last-child::after { display:none; }
+    .monitor-row:hover { background:var(--bg); }
+    .m-name { font-weight:400; font-size:1.05rem; color:var(--text); flex:1; min-width:15rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; transition:color .3s; }
+    .m-uptime { font-weight:400; font-size:1.05rem; flex:0 0 5rem; text-align:right; margin-right:var(--m-uptime-mr); transition:color .3s; }
+    .m-uptime.excellent, .m-uptime.good { color:var(--g); }
+    .m-uptime.fair { color:var(--o); }
+    .m-uptime.poor { color:var(--r); }
+    .daily-bars { flex:0 0 auto; display:flex; align-items:center; gap:0.125rem; justify-content:flex-start; margin-right:var(--bars-mr); contain:layout style; }
+    .daily-bar { flex:0 0 0.1875rem; height:var(--bar-h); border-radius:0.5rem; background:#e2e8f0; transition:transform .1s; cursor:default; }
+    .daily-bar:hover { transform:scaleY(1.2); }
+    .daily-bar.excellent { background:var(--g); }
+    .daily-bar.good { background:var(--lg); }
+    .daily-bar.fair { background:var(--o); }
+    .daily-bar.poor { background:var(--r); }
+    .m-status { flex:0 0 5rem; display:flex; align-items:center; gap:0.375rem; font-size:1.05rem; font-weight:400; }
+    .m-status .txt.Up { color:var(--g); }
+    .m-status .txt.Down { color:var(--r); }
+    .m-status .txt.Paused, .m-status .txt.None { color:var(--gy); }
+    .loading-placeholder, .error-placeholder { padding:3.75rem 1.25rem; text-align:center; color:#94a3b8; font-size:0.95rem; }
+    .error-placeholder { color:#dc2626; }
+    .footer { margin-top:auto; padding:1.5rem 0 1.25rem; text-align:right; font-size:0.95rem; display:flex; justify-content:flex-end; align-items:center; gap:0.25rem; color:var(--muted); background:transparent; transition:color .3s; }
+    .footer .by { color:var(--muted); font-weight:400; }
+    .footer .dot-green { display:inline-block; width:0.5rem; height:0.5rem; background:var(--g); border-radius:50%; margin:0 0.125rem; vertical-align:middle; margin-top:0.25rem; }
+    .footer .uptime-robot { font-weight:700; color:var(--text); font-size:1.3rem; transition:color .3s; }
+    .text-green { color: #3BD671; }
+    .text-orange { color: #F29030; }
+    .text-red { color: #DF484A; }
+    .text-gray { color: #94a3b8; }
+  </style>
+</head>
+<body>
+<div class="container" id="app">
+  <div class="header">
+    <div class="header-left"><h1>Status page</h1></div>
+    <div class="header-right">
+      <div class="service-status">
+        Service status
+        <label class="theme-toggle" aria-label="切换明暗模式">
+          <input type="checkbox" id="themeToggle">
+          <svg class="sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M19.1 4.9l-1.4 1.4M6.3 17.7l-1.4 1.4"/></svg>
+          <svg class="moon" viewBox="0 0 24 24"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+        </label>
+      </div>
+      <div class="update-info">
+        <span>Last updated <span id="lastUpdated">--</span></span>
+        <span>|</span>
+        <span class="cd-wrap">
+          <span class="lbl">Next update in</span>
+          <span id="countdown" class="num running"></span>
+          <span class="unit">sec.</span>
+        </span>
+      </div>
+    </div>
+  </div>
+  <div class="overall-card" id="overallCard">
+    <div class="overall-status" id="overallStatus">
+      <div class="dot dot-lg" id="overallDot">
+        <div class="core" id="overallCore" style="background:#3BD671;"></div>
+        <div class="ring" id="overallRing" style="background:#3BD671;"></div>
+      </div>
+      <span id="overallText">
+        <span id="statusPrefix"></span>
+        <span id="statusLastWord" class="text-green"></span>
+      </span>
+    </div>
+  </div>
+  <div class="services-title">Services</div>
+  <div class="monitor-card" id="monitorCard">
+    <div class="loading-placeholder">⏳ Loading monitor data...</div>
+  </div>
+  <div class="footer">
+    <span class="by">Data from</span>
+    <span class="dot-green"></span>
+    <span class="uptime-robot">UptimeRobot</span>
+  </div>
+</div>
+<script>
+(function() {
+  const themeToggle = document.getElementById('themeToggle');
+  const root = document.documentElement;
+  const matchDark = window.matchMedia('(prefers-color-scheme: dark)');
+  const lastUpdatedEl = document.getElementById('lastUpdated');
+  const monitorCard = document.getElementById('monitorCard');
+  const overallCore = document.getElementById('overallCore');
+  const overallRing = document.getElementById('overallRing');
+  const statusPrefix = document.getElementById('statusPrefix');
+  const statusLastWord = document.getElementById('statusLastWord');
+  const overallDot = document.getElementById('overallDot');
+  let countdownEl = document.getElementById('countdown');
+  const CLASS_MAP = { excellent: 'excellent', good: 'good', fair: 'fair', poor: 'poor' };
+  const STATUS_MAP = { 'success': 'Up', 'danger': 'Down', 'notchecked': 'None', 'paused': 'Paused' };
+  const COLORS = { green: '#3BD671', orange: '#F29030', red: '#DF484A' };
+  const TEXT_COLOR_MAP = {
+    '#3BD671': 'text-green',
+    '#F29030': 'text-orange',
+    '#DF484A': 'text-red',
+    '#94a3b8': 'text-gray'
+  };
+  function getCurrentTheme() {
+    const dataTheme = root.getAttribute('data-theme');
+    if (dataTheme) return dataTheme;
+    return matchDark.matches ? 'dark' : 'light';
+  }
+  function setTheme(theme) {
+    if (theme === 'system') {
+      root.removeAttribute('data-theme');
+      root.style.colorScheme = '';
+    } else {
+      root.setAttribute('data-theme', theme);
+      root.style.colorScheme = theme;
+    }
+    const current = getCurrentTheme();
+    const sys = matchDark.matches ? 'dark' : 'light';
+    themeToggle.checked = (current !== sys);
+  }
+  function toggleTheme() {
+    const current = getCurrentTheme();
+    const sys = matchDark.matches ? 'dark' : 'light';
+    if (current === sys) {
+      setTheme(sys === 'dark' ? 'light' : 'dark');
+    } else {
+      setTheme('system');
+    }
+  }
+  setTheme('system');
+  themeToggle.addEventListener('change', function(e) {
+    if (this._toggling) return;
+    this._toggling = true;
+    toggleTheme();
+    this._toggling = false;
+  });
+  matchDark.addEventListener('change', function() {
+    if (!root.getAttribute('data-theme')) {
+      setTheme('system');
+    }
+  });
+  function getClass(label) {
+    return CLASS_MAP[label] || '';
+  }
+  function getStatusInfo(status) {
+    return STATUS_MAP[status] || 'Paused';
+  }
+  function formatRatioRaw(str) {
+    if (str === undefined || str === null || str === '') return '—%';
+    if (str.includes('%')) return str;
+    return str + '%';
+  }
+  function get90dRatio(item) {
+    const r = item['90dRatio'] || {};
+    return { ratio: r.ratio !== undefined ? formatRatioRaw(r.ratio) : '—%', label: r.label || 'good' };
+  }
+  function setLastUpdated() {
+    if (lastUpdateTime) {
+      lastUpdatedEl.textContent = lastUpdateTime.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    }
+  }
+  let lastUpdateTime = null;
+  function resetCountdown() {
+    const parent = countdownEl.parentNode;
+    const newEl = document.createElement('span');
+    newEl.id = 'countdown';
+    newEl.className = 'num running';
+    parent.replaceChild(newEl, countdownEl);
+    countdownEl = newEl;
+    bindAnimationEnd(newEl);
+  }
+  let animationEndTriggered = false;
+  function bindAnimationEnd(el) {
+    animationEndTriggered = false;
+    el.addEventListener('animationend', function onAnimEnd() {
+      if (animationEndTriggered) return;
+      animationEndTriggered = true;
+      loadData(true);
+      setTimeout(resetCountdown, 100);
+    });
+  }
+  function updateOverallStatus(counts) {
+    const total = counts.total || 0;
+    const up = counts.up || 0;
+    const down = counts.down || 0;
+    const paused = counts.paused || 0;
+    let statusText = '', color = COLORS.green, isGray = false;
+    if (down === 0 && paused === 0) { statusText = 'All systems Operational'; color = COLORS.green; }
+    else if (down > 0 && down < total) { statusText = 'Some systems down'; color = COLORS.orange; }
+    else if (down === total) { statusText = 'All systems down'; color = COLORS.red; }
+    else if (paused > 0) { statusText = 'Some systems paused'; color = '#94a3b8'; isGray = true; }
+    else { statusText = 'Unknown status'; color = '#94a3b8'; isGray = true; }
+    const lastSpace = statusText.lastIndexOf(' ');
+    let prefix = statusText;
+    let lastWord = '';
+    if (lastSpace !== -1) {
+      prefix = statusText.substring(0, lastSpace);
+      lastWord = statusText.substring(lastSpace + 1);
+    } else {
+      lastWord = statusText;
+      prefix = '';
+    }
+    const colorClass = TEXT_COLOR_MAP[color] || 'text-green';
+    statusPrefix.textContent = prefix + (prefix ? ' ' : '');
+    statusLastWord.textContent = lastWord;
+    statusLastWord.className = colorClass;
+    overallCore.style.background = color;
+    overallRing.style.background = color;
+    overallDot.classList.toggle('gray', isGray);
+  }
+  function render(data) {
+    const monitors = data.data || [];
+    if (data.statistics && data.statistics.counts) {
+      updateOverallStatus(data.statistics.counts);
+    } else if (data.psp && data.psp.monitors) {
+      const items = data.psp.monitors || [];
+      const up = items.filter(m => m.statusClass === 'success').length;
+      const down = items.filter(m => m.statusClass === 'danger').length;
+      const paused = items.filter(m => m.statusClass === 'paused' || m.statusClass === 'notchecked').length;
+      updateOverallStatus({ up, down, paused, total: items.length });
+    }
+    if (monitors.length === 0) {
+      monitorCard.textContent = '';
+      const placeholder = document.createElement('div');
+      placeholder.className = 'loading-placeholder';
+      placeholder.textContent = 'No monitors found';
+      monitorCard.appendChild(placeholder);
+      return;
+    }
+    const cardWidth = monitorCard.clientWidth;
+    const rootFontSize = parseFloat(getComputedStyle(document.documentElement).fontSize);
+    const reserved = (5 + 5) * rootFontSize + 2 * 1.25 * rootFontSize + 1.25 * rootFontSize;
+    let availableWidth = cardWidth - reserved;
+    availableWidth -= 15 * rootFontSize;
+    const barWidth = 0.1875 * rootFontSize;
+    const gap = 0.125 * rootFontSize;
+    const unitWidth = barWidth + gap;
+    let maxBars = Math.floor(availableWidth / unitWidth);
+    maxBars = Math.min(90, Math.max(1, maxBars));
+    let html = '';
+    for (const item of monitors) {
+      const name = item.name || 'Unnamed';
+      const statusClass = item.statusClass || 'unknown';
+      const dotClass = getStatusInfo(statusClass);
+      const statusText = dotClass;
+      const isGray = (dotClass === 'Paused' || dotClass === 'None');
+      const uptimeInfo = get90dRatio(item);
+      const uptimeClass = getClass(uptimeInfo.label);
+      const uptimeDisplay = uptimeInfo.ratio;
+      const daily = Array.isArray(item.dailyRatios) ? item.dailyRatios : [];
+      const recent = daily.slice(-maxBars);
+      let barsHtml = '';
+      for (const day of recent) {
+        const barClass = getClass(day.label);
+        const ratioStr = day.ratio !== undefined && day.ratio !== null ? formatRatioRaw(day.ratio) : '?%';
+        const dateStr = day.date || 'unknown';
+        barsHtml += `<div class="daily-bar ${barClass}" title="${dateStr}: ${ratioStr}"></div>`;
+      }
+      const dotGrayClass = isGray ? 'gray' : '';
+      html += `
+        <div class="monitor-row">
+          <span class="m-name" title="${name}">${name}</span>
+          <span class="m-uptime ${uptimeClass}">${uptimeDisplay}</span>
+          <div class="daily-bars">${barsHtml}</div>
+          <div class="m-status">
+            <div class="dot dot-sm ${dotGrayClass}">
+              <div class="core ${dotClass}"></div>
+              <div class="ring ${dotClass}"></div>
+            </div>
+            <span class="txt ${dotClass}">${statusText}</span>
+          </div>
+        </div>
+      `;
+    }
+    const fragment = document.createRange().createContextualFragment(html);
+    monitorCard.replaceChildren(fragment);
+    lastUpdateTime = new Date();
+    setLastUpdated();
+  }
+  const API_URL = 'https://stats.uptimerobot.com/api/getMonitorList/WHYtyVV51p';
+  async function loadData(silent = false) {
+    if (!silent) {
+      monitorCard.textContent = '';
+      const placeholder = document.createElement('div');
+      placeholder.className = 'loading-placeholder';
+      placeholder.textContent = '⏳ Loading...';
+      monitorCard.appendChild(placeholder);
+    }
+    try {
+      const resp = await fetch(API_URL);
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      const json = await resp.json();
+      if (json.status === 'ok' && Array.isArray(json.data)) {
+        render(json);
+      } else {
+        throw new Error('Invalid data format');
+      }
+    } catch (err) {
+      if (!silent) {
+        monitorCard.textContent = '';
+        const errorEl = document.createElement('div');
+        errorEl.className = 'error-placeholder';
+        errorEl.textContent = `❌ Failed to load: ${err.message}`;
+        monitorCard.appendChild(errorEl);
+      } else {
+        console.warn('Silent refresh failed:', err.message);
+      }
+    }
+  }
+  loadData(false);
+  bindAnimationEnd(countdownEl);
+  setInterval(setLastUpdated, 10000);
+})();
+</script>
+</body>
+</html>
