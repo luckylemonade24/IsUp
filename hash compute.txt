@@ -1,0 +1,17 @@
+(async function() {
+  const encoder = new TextEncoder();
+  const algo = 'SHA-256';
+  const getHash = async (text) => {
+    const data = encoder.encode(text);
+    const hashBuffer = await crypto.subtle.digest(algo, data);
+    const hashArray = new Uint8Array(hashBuffer);
+    return btoa(String.fromCharCode(...hashArray));
+  };
+  const tags = [...document.querySelectorAll('script:not([src]), style')];
+  for (const el of tags) {
+    const content = el.textContent;
+    if (!content.trim()) continue;
+    const hash = await getHash(content);
+    console.log(`<${el.tagName.toLowerCase()}> -> 'sha256-${hash}'`);
+  }
+})();
