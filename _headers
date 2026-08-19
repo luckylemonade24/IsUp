@@ -13,4 +13,4 @@
   X-XSS-Protection: 1; mode=block
   Referrer-Policy: strict-origin-when-cross-origin
   Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
-  Content-Security-Policy: default-src 'self'; script-src 'self' 'sha256-cQtYHC8VOfZuep+Gdhq1ddXu2yfBtdXREsJbK5Tt0Xk='; style-src 'self' 'sha256-jvPOko7X/PRlL+zA/x4gW1eXP4XXcRCqoiL2VL1jLEQ='; img-src 'self' data:; font-src 'self'; connect-src 'self' https://stats.uptimerobot.com; frame-ancestors 'none'
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'sha256-0cJbSCmG8pe4rGFwuWk0PvQDpsSE3EiYTLsRw1YO2VA='; style-src 'self' 'sha256-ZRJKA1rzY5o5UToDIRSoLZ8vTwTq86StqwSTnCOQVLw='; img-src 'self' data:; font-src 'self'; connect-src 'self' https://stats.uptimerobot.com; frame-ancestors 'none'
