@@ -9,7 +9,7 @@ jobs:
   render:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Fetch monitor list
         env:
@@ -38,7 +38,7 @@ jobs:
         run: node scripts/render.js /tmp/list.json /tmp/reasons.json index.html /tmp/index.html
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: isup-rendered-html
           path: /tmp/index.html
