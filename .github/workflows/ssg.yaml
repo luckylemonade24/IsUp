@@ -1,0 +1,54 @@
+name: Update IsUp Status
+
+on:
+  schedule:
+    - cron: '0 0 * * *'      # 每天 UTC 0 点兜底一次
+  workflow_dispatch:          # 邮箱 Worker 触发 / 手动触发
+
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Fetch monitor list
+        env:
+          MON_ID: ${{ secrets.UPTIMEROBOT_STATUS_PAGE_ID }}
+        run: |
+          curl -sSL "https://stats.uptimerobot.com/api/getMonitorList/${MON_ID}" > /tmp/list.json
+          jq -e '.status == "ok" and (.data | length > 0)' /tmp/list.json
+
+      - name: Fetch reasons for danger monitors
+        env:
+          MON_ID: ${{ secrets.UPTIMEROBOT_STATUS_PAGE_ID }}
+        run: |
+          echo '{}' > /tmp/reasons.json
+          jq -r '.data[] | select(.statusClass == "danger") | .id // .monitorId' /tmp/list.json \
+          | while IFS= read -r mid; do
+              [ -z "$mid" ] && continue
+              code=$(curl -sSL "https://stats.uptimerobot.com/api/getMonitor/${MON_ID}?m=${mid}" \
+                | jq -r '.monitor?.logs?.[0]?.reason?.code // empty')
+              if [ -n "$code" ]; then
+                jq --arg m "$mid" --arg c "$code" '.[$m] = $c' /tmp/reasons.json > /tmp/r.tmp \
+                  && mv /tmp/r.tmp /tmp/reasons.json
+              fi
+            done
+
+      - name: Render
+        run: node scripts/render.js /tmp/list.json /tmp/reasons.json index.html /tmp/index.html
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: isup-rendered-html
+          path: /tmp/index.html
+          retention-days: 7
+
+      - name: Deploy to CF Pages
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+        run: |
+          mkdir -p /tmp/deploy
+          cp /tmp/index.html /tmp/deploy/
+          npx -y wrangler pages deploy /tmp/deploy --project-name=isup --branch=main --commit-dirty=true
