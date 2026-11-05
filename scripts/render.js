@@ -8,6 +8,9 @@ let reasons = {};
 try { reasons = JSON.parse(fs.readFileSync(reasonsPath, 'utf8')); } catch (e) {}
 let html = fs.readFileSync(indexPath, 'utf8');
 
+// 删掉不再使用的 monitor-id meta（预渲染后前端不再调 API）
+html = html.replace(/<meta name="monitor-id"[^>]*>/i, '');
+
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({
   '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
 }[c]));
@@ -133,6 +136,5 @@ html = html.replace(/<script>[\s\S]*?<\/script>/, newScript);
 
 fs.writeFileSync(outPath, html);
 
-// ---- 体积自检：插入前后的换行数对比 ----
 const nl = (html.match(/\n/g) || []).length;
 console.log('✅ 渲染完成: ' + (list.data || []).length + ' 个 monitor, 输出 ' + html.length + ' 字节, 换行数 ' + nl + ' → ' + outPath);
